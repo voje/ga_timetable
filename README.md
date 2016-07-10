@@ -4,7 +4,7 @@ Kristjan Voje
 ## Task
 There are approximately 111 participants, which I will organize into 11 different workshops. The event will take place for 4 days. Each day, all 11 workshops will be open simulateneously. Each participant has selected 4 workshops, that he will attend. For every workshop he has selected, I need to assign which day he will be taking it.  
 The main restraint is that each participant can take only one workshop per day.  
-I should also group participant so they would be roughly the same age group. Age groups are represented as school classes from 1 to 9.
+I should also group participant so they would be roughly of the same age group. Age groups are represented as school grades from 1 to 9.
 
 ## Data representation
 The data is encoded in a binary string (a chromosome).  
