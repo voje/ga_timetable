@@ -9,6 +9,8 @@ I should also group participant so they would be roughly the same age group. Age
 ## Data representation
 The data is encoded in a binary string (a chromosome).  
 * N ... number of participants
-* D ... number of days
-String length: N*D*4.  
+* D ... number of days  
+
+String length: N*D*4.
+
 Each participant is represented with D days. Each day is represented with 4 bits. The 4 bits encode the ID of the workshop the participant is attending. This way we make sure, each participant is attending no more than 1 workshop per day.
