@@ -48,6 +48,18 @@ helper_create_chromosome <- function(mapping_matrix) {
   return(chr);
 }
 
+helper_chromosome_to_decimal <- function(chromosome) {
+  dec <- numeric();
+  for (i in 1:(length(chromosome)/4)) {
+    idx <- (i-1)*4+1;
+    idx1 <- idx+3;
+    num <- chromosome[idx:idx1];
+    #cat(num, "\n");
+    dec <- c(dec, binary2decimal(num));
+  }
+  return(dec);
+}
+
 my_init_pop <- function(object) {
   if (!exists("mapping_matrix")) {
     return(FALSE);
@@ -65,9 +77,32 @@ get_nBits <- function(mapping_matrix) {
   return(n*4*4);
 }
 
-eval_function <- function(x) {
+my_fitness_function <- function(x) {
   #this is where things get fun
   
+  #convert chromosome to decimal values
+  dec <- helper_chromosome_to_decimal(x);
+
+  #critical condition (participant in the right workshops)
+  for (i in 1:(length(dec)/4)) {
+    #i is the index of the participant
+    idx <- (i-1)*4+1;
+    idx1 <- idx+3;
+    child <- dec[idx:idx1];
+    for (j in 1:length(child)) {
+      #check if child is in the right workshop
+      if (child[j] < 1 || child[j] > 11) {
+        return(-1000);
+      }
+      if (mapping_matrix[i,child[j]] == 0) {
+        return(-1000);
+      }
+    }
+  }
+  
+  #todo
+
+  return(sum(x));
 }
 
 
