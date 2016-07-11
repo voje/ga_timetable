@@ -100,9 +100,44 @@ my_fitness_function <- function(x) {
     }
   }
   
-  #todo
+  #check variance of workshop participands, check variances of ages per workshop
+  mat <- matrix(nrow=length(participants), ncol=4*11);
+  for (i in 1:(length(dec)/4)) {
+    #i is the index of the participant
+    idx <- (i-1)*4+1;
+    idx1 <- idx+3;
+    child <- dec[idx:idx1];
+    for (j in 1:length(child)) {
+      #workshop index (4 * 11 workshops)
+      widx <- (j-1)*11 + child[j];
+      mat[i, widx] <- get_grade(participants[i]);
+    }
+  }
+  
+  #variance of participants per workshop
+  part_per_workshop <- numeric();
+  for (i in 1:length(mat[1,])) {
+    col <- mat[,i];
+    s <- sum(col[!is.na(col)]);
+    part_per_workshop <- c(part_per_workshop, s);
+  }
+  partic_var <- var(part_per_workshop);
+  
+  #variance of ages in an individual workshop
+  age_var_per_workshop <- numeric();
+  for(i in 1:length(mat[1,])) {
+    col <- mat[,i];
+    v <- var(col[!is.na(col)]);
+    age_var_per_workshop <- c(age_var_per_workshop, v);
+  }
+  age_avg <- mean(age_var_per_workshop);
+  
+  if (!exists("age_weight")) {
+    age_weight = 1;
+    num_weight = 1;
+  }
 
-  return(sum(x));
+  return((-1)*(partic_var + age_avg));
 }
 
 
