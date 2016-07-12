@@ -86,11 +86,13 @@ get_nBits <- function(mapping_matrix) {
   return(n*4*4);
 }
 
-my_fitness_function <- function(x) {
-  #convert chromosome to decimal values
-  dec <- helper_chromosome_to_decimal(x);
-
+helper_is_legit_participant <- function(x, binary=TRUE) {
   #critical condition (participant in the right workshops)
+  if (binary) {
+    dec <- helper_chromosome_to_decimal(x);
+  } else {
+    dec <- x;
+  }
   for (i in 1:(length(dec)/4)) {
     #i is the index of the participant
     idx <- (i-1)*4+1;
@@ -99,12 +101,22 @@ my_fitness_function <- function(x) {
     for (j in 1:length(child)) {
       #check if child is in the right workshop
       if (child[j] < 1 || child[j] > 11) {
-        return(-1000);
+        return(FALSE);
       }
       if (mapping_matrix[i,child[j]] == 0) {
-        return(-1000);
+        return(FALSE);
       }
     }
+  }
+  return(TRUE);
+}
+
+my_fitness_function <- function(x) {
+  #convert chromosome to decimal values
+  dec <- helper_chromosome_to_decimal(x);
+
+  if ( !(helper_is_legit_participant(dec, binary=FALSE)) ) {
+    return(-1000);
   }
   
   #check variance of workshop participands, check variances of ages per workshop
@@ -180,26 +192,34 @@ my_crossover <- function(object, parents) {
   parent1 <- object@population[parents[1],];
   parent2 <- object@population[parents[2],];
   
-  n_participants <- length(parent1)/16;
+  le <- length(parent1);
+  n_part <- (le/16);
   
   #how many participants are on the left side of the cut (1:all-1)
-  cutter <- sample(1:(n_participants-1), 1)*16;
+  cutter <- (sample(1:(n_part-1), 1) * 16);
   #parent1
   c1 <- parent1[1:cutter];
-  c2 <- parent1[(cutter+1):length(parent1)];
+  c2 <- parent1[(cutter+1):le];
   #parent2
   c3 <- parent2[1:cutter];
-  c4 <- parent2[(cutter+1):length(parent2)];
+  c4 <- parent2[(cutter+1):le];
   
   #children
   child1 <- c(c1, c4);
   child2 <- c(c3, c2);
   
+  if ( !(helper_is_legit_participant(child1)) || !(helper_is_legit_participant(child2)) ) {
+    stop("Function my_crossover: illegit child");
+  }
+  
   val_c1 <- my_fitness_function(child1);
   val_c2 <- my_fitness_function(child2);
   
   res <- list();
-  mat <- matrix(c(child1, child2), ncol=length(child1));
+  mat <- numeric();
+  mat <- rbind(mat, child1);
+  mat <- rbind(mat, child2);
+
   res$children <- mat;
   res$fitness <- c(val_c1, val_c2);
 
@@ -225,4 +245,31 @@ run_tests <- function() {
   for (i in 1:GA@popSize) {
     cat(my_fitness_function(GA@population[i,]), "\n");
   }
+}
+
+test_generate_chromosome <- function() {
+  res <- numeric();
+  for (i in 1:1000) {
+    print(i);
+    new <- helper_is_legit_participant(helper_create_chromosome(mapping_matrix));
+    res <- c(res, new);
+  }
+  return(res);
+}
+
+test_my_crossover <- function(N=1000) {
+  tests <- numeric();
+  for (i in 1:N) {
+    cat("\r", i);
+    p1 <- helper_create_chromosome(mapping_matrix);
+    p2 <- helper_create_chromosome(mapping_matrix);
+    GA@population[1,] <- p1;
+    GA@population[2,] <- p2;
+    res <- my_crossover(GA, c(1,2));
+    rc1 <- helper_is_legit_participant(res$children[1,]);
+    rc2 <- helper_is_legit_participant(res$children[2,]);
+    t1 <- (rc1 & rc2);
+    tests <- c(tests, t1);
+  }
+  return(tests);
 }
