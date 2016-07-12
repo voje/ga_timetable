@@ -11,8 +11,10 @@ age_weight = 1;
 #num_weight - how much do evenly assigned groups matter
 num_weight = 0.5;
 #
-n_iter = 400;
-GA <- ga(type="binary", fitness=my_fitness_function, nBits=get_nBits(mapping_matrix), population=my_init_pop, maxiter=n_iter);
+n_iter = 20;
+p_cross = 0.8;
+p_mut = 0;
+GA <- ga(type="binary", fitness=my_fitness_function, nBits=get_nBits(mapping_matrix), population=my_init_pop, crossover=my_crossover, mutation=my_mutation, pcrossover=p_cross, pmutation=p_mut, maxiter=n_iter);
 
 pretty <- pretty_table(GA@solution);
 
