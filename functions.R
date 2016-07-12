@@ -130,17 +130,39 @@ my_fitness_function <- function(x) {
     v <- var(col[!is.na(col)]);
     age_var_per_workshop <- c(age_var_per_workshop, v);
   }
-  age_avg <- mean(age_var_per_workshop);
+  age_score <- sum(age_var_per_workshop);
   
   if (!exists("age_weight")) {
     age_weight = 1;
     num_weight = 1;
   }
 
-  return((-1)*(partic_var + age_avg));
+  #return((-1)*(partic_var*num_weight + age_score*age_weight));
+  return((-1)*(age_score));
 }
 
-
+pretty_table <- function(chr) {
+  dec <- helper_chromosome_to_decimal(chr);
+  #groups participants by workshops
+  ncols <- 11*4;
+  nrows <- length(participants);
+  rmat <- matrix(ncol=ncols, nrow=nrows);
+  colnames(rmat) <- rep(activities, 4);
+  tmp_counter <- rep(1, ncols);
+  for (i in 1:(length(dec)/4)) {
+    #i is the index of the participant
+    idx <- (i-1)*4+1;
+    idx1 <- idx+3;
+    child <- dec[idx:idx1];
+    for (j in 1:length(child)) {
+      #workshop index (4 * 11 workshops)
+      widx <- (j-1)*11 + child[j];
+      rmat[tmp_counter[widx], widx] <- as.character(participants[i]);
+      tmp_counter[widx] <- tmp_counter[widx] + 1;
+    }
+  }
+  return(rmat);
+}
 
 
 
