@@ -1,3 +1,5 @@
+source("helper_functions.R");
+
 get_grade <- function(factor) {
   str <- as.character(factor);
   grd <- as.integer(substring(str, 1, 1));
@@ -36,39 +38,6 @@ create_mapping_matrix <- function(participants, activities, data) {
   return(m);
 }
 
-helper_create_chromosome <- function(mapping_matrix) {
-  chr <- numeric();
-  for (i in 1:nrow(mapping_matrix)) {
-    quadruple <- which(mapping_matrix[i,] == 1);
-    quadruple <- sample(quadruple);
-    for (j in 1:length(quadruple)) {
-      chr <- c(chr, decimal2binary(quadruple[j], 4));
-    }
-  }
-  return(chr);
-}
-
-helper_chromosome_to_decimal <- function(chromosome) {
-  dec <- numeric();
-  for (i in 1:(length(chromosome)/4)) {
-    idx <- (i-1)*4+1;
-    idx1 <- idx+3;
-    num <- chromosome[idx:idx1];
-    #cat(num, "\n");
-    dec <- c(dec, binary2decimal(num));
-  }
-  return(dec);
-}
-
-helper_decimal_to_chromosome <- function(decimal) {
-  chromosome <- numeric();
-  for (i in 1:length(decimal)) {
-    bin <- decimal2binary(decimal[i], 4);
-    chromosome <- c(chromosome, bin);
-  }
-  return(chromosome);
-}
-
 my_init_pop <- function(object) {
   if (!exists("mapping_matrix")) {
     return(FALSE);
@@ -86,40 +55,80 @@ get_nBits <- function(mapping_matrix) {
   return(n*4*4);
 }
 
-helper_is_legit_participant <- function(x, binary=TRUE) {
-  #critical condition (participant in the right workshops)
-  if (binary) {
-    dec <- helper_chromosome_to_decimal(x);
-  } else {
-    dec <- x;
+my_fitness_function1 <- function(x) {
+  #uses both number of participants and age variance in groups
+  
+  #convert chromosome to decimal values
+  dec <- helper_chromosome_to_decimal(x);
+
+  if ( !(helper_is_legit_participant(dec, binary=FALSE)) ) {
+    stop("error!");
+    return(-1000);
   }
+  
+  #check variance of workshop participants, check variances of ages per workshop
+  mat <- matrix(nrow=length(participants), ncol=4*11);
   for (i in 1:(length(dec)/4)) {
     #i is the index of the participant
     idx <- (i-1)*4+1;
     idx1 <- idx+3;
     child <- dec[idx:idx1];
     for (j in 1:length(child)) {
-      #check if child is in the right workshop
-      if (child[j] < 1 || child[j] > 11) {
-        return(FALSE);
-      }
-      if (mapping_matrix[i,child[j]] == 0) {
-        return(FALSE);
-      }
+      #workshop index (4 * 11 workshops)
+      widx <- (j-1)*11 + child[j];
+      mat[i, widx] <- get_grade(participants[i]);
     }
   }
-  return(TRUE);
-}
+  
+  #variance of participants per workshop
+  part_per_workshop <- numeric();
+  for (i in 1:length(mat[1,])) {
+    col <- mat[,i];
+    selection <- col[!is.na(col)];
+    #if too few, discard
+    if (length(selection) < 2) {
+      return(-1000);
+    }
+    s <- sum(selection);
+    part_per_workshop <- c(part_per_workshop, s);
+  }
+  partic_var <- var(part_per_workshop);
+  #testing_partic_var <<- c(testing_partic_var, partic_var);
+  #normalize interval [0:100]
+  partic_var <- helper_normalize(partic_var, c(0,100));
+  
+  #variance of ages in an individual workshop
+  age_var_per_workshop <- numeric();
+  for(i in 1:length(mat[1,])) {
+    col <- mat[,i];
+    selection <- col[!is.na(col)];
+    v <- var(selection);
+    age_var_per_workshop <- c(age_var_per_workshop, v);
+  }
+  age_score <- mean(age_var_per_workshop);
+  #testing_age_score <<- c(testing_age_score, age_score);
+  #normalize interval [4:6]
+  age_score <- helper_normalize(age_score, c(4.6, 6));
+  
+  if (!exists("age_weight")) {
+    age_weight = 1;
+    num_weight = 1;
+  }
+  
+  return((-1)*(partic_var*num_weight + age_score*age_weight));
+}#my_fitness_function1
 
-my_fitness_function <- function(x) {
+my_fitness_function2 <- function(x) {
+  #uses number of participants in groups
+  
   #convert chromosome to decimal values
   dec <- helper_chromosome_to_decimal(x);
-
+  
   if ( !(helper_is_legit_participant(dec, binary=FALSE)) ) {
     return(-1000);
   }
   
-  #check variance of workshop participands, check variances of ages per workshop
+  #check variance of workshop participants, check variances of ages per workshop
   mat <- matrix(nrow=length(participants), ncol=4*11);
   for (i in 1:(length(dec)/4)) {
     #i is the index of the participant
@@ -147,6 +156,33 @@ my_fitness_function <- function(x) {
   }
   partic_var <- var(part_per_workshop);
   
+  return((-1)*(partic_var));
+}#my_fitness_function2
+
+my_fitness_function3 <- function(x) {
+  #uses age variances in groups
+  
+  #convert chromosome to decimal values
+  dec <- helper_chromosome_to_decimal(x);
+  
+  if ( !(helper_is_legit_participant(dec, binary=FALSE)) ) {
+    return(-1000);
+  }
+  
+  #check variance of workshop participants, check variances of ages per workshop
+  mat <- matrix(nrow=length(participants), ncol=4*11);
+  for (i in 1:(length(dec)/4)) {
+    #i is the index of the participant
+    idx <- (i-1)*4+1;
+    idx1 <- idx+3;
+    child <- dec[idx:idx1];
+    for (j in 1:length(child)) {
+      #workshop index (4 * 11 workshops)
+      widx <- (j-1)*11 + child[j];
+      mat[i, widx] <- get_grade(participants[i]);
+    }
+  }
+  
   #variance of ages in an individual workshop
   age_var_per_workshop <- numeric();
   for(i in 1:length(mat[1,])) {
@@ -157,13 +193,8 @@ my_fitness_function <- function(x) {
   }
   age_score <- sum(age_var_per_workshop);
   
-  if (!exists("age_weight")) {
-    age_weight = 1;
-    num_weight = 1;
-  }
-  
-  return((-1)*(partic_var*num_weight + age_score*age_weight));
-}
+  return((-1)*(age_score));
+}#my_fitness_function3
 
 pretty_table <- function(chr) {
   dec <- helper_chromosome_to_decimal(chr);
@@ -181,6 +212,7 @@ pretty_table <- function(chr) {
     for (j in 1:length(child)) {
       #workshop index (4 * 11 workshops)
       widx <- (j-1)*11 + child[j];
+      print(widx);
       rmat[tmp_counter[widx], widx] <- as.character(participants[i]);
       tmp_counter[widx] <- tmp_counter[widx] + 1;
     }
@@ -208,9 +240,9 @@ my_crossover <- function(object, parents) {
   child1 <- c(c1, c4);
   child2 <- c(c3, c2);
   
-  if ( !(helper_is_legit_participant(child1)) || !(helper_is_legit_participant(child2)) ) {
-    stop("Function my_crossover: illegit child");
-  }
+  #if ( !(helper_is_legit_participant(child1)) || !(helper_is_legit_participant(child2)) ) {
+  #  stop("Function my_crossover: illegit child");
+  #}
   
   val_c1 <- my_fitness_function(child1);
   val_c2 <- my_fitness_function(child2);
@@ -241,35 +273,3 @@ my_mutation <- function(object, parent_idx) {
   return(parent);
 }
 
-run_tests <- function() {
-  for (i in 1:GA@popSize) {
-    cat(my_fitness_function(GA@population[i,]), "\n");
-  }
-}
-
-test_generate_chromosome <- function() {
-  res <- numeric();
-  for (i in 1:1000) {
-    print(i);
-    new <- helper_is_legit_participant(helper_create_chromosome(mapping_matrix));
-    res <- c(res, new);
-  }
-  return(res);
-}
-
-test_my_crossover <- function(N=1000) {
-  tests <- numeric();
-  for (i in 1:N) {
-    cat("\r", i);
-    p1 <- helper_create_chromosome(mapping_matrix);
-    p2 <- helper_create_chromosome(mapping_matrix);
-    GA@population[1,] <- p1;
-    GA@population[2,] <- p2;
-    res <- my_crossover(GA, c(1,2));
-    rc1 <- helper_is_legit_participant(res$children[1,]);
-    rc2 <- helper_is_legit_participant(res$children[2,]);
-    t1 <- (rc1 & rc2);
-    tests <- c(tests, t1);
-  }
-  return(tests);
-}
