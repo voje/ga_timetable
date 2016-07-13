@@ -14,3 +14,7 @@ The data is encoded in a binary string (a chromosome).
 String length: N*D*4.
 
 Each participant is represented with D days. Each day is represented with 4 bits. The 4 bits encode the ID of the workshop the participant is attending. This way we make sure, each participant is attending no more than 1 workshop per day.
+
+## Results
+It's a balance between group sizes and distribution of age inside grups. Table pretty5.csv was created by takking inco acount both factors equally.
+
