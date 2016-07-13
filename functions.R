@@ -94,8 +94,8 @@ my_fitness_function1 <- function(x) {
   }
   partic_var <- var(part_per_workshop);
   #testing_partic_var <<- c(testing_partic_var, partic_var);
-  #normalize interval [0:100]
-  partic_var <- helper_normalize(partic_var, c(0,100));
+  #normalize interval [0:500]
+  partic_var <- helper_normalize(partic_var, c(1,500));
   
   #variance of ages in an individual workshop
   age_var_per_workshop <- numeric();
@@ -212,7 +212,6 @@ pretty_table <- function(chr) {
     for (j in 1:length(child)) {
       #workshop index (4 * 11 workshops)
       widx <- (j-1)*11 + child[j];
-      print(widx);
       rmat[tmp_counter[widx], widx] <- as.character(participants[i]);
       tmp_counter[widx] <- tmp_counter[widx] + 1;
     }
