@@ -243,8 +243,8 @@ my_crossover <- function(object, parents) {
   #  stop("Function my_crossover: illegit child");
   #}
   
-  val_c1 <- my_fitness_function(child1);
-  val_c2 <- my_fitness_function(child2);
+  val_c1 <- my_fitness_function1(child1);
+  val_c2 <- my_fitness_function1(child2);
   
   res <- list();
   mat <- numeric();
