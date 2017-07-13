@@ -35,8 +35,8 @@ class ga_oratorio:
         self.best_chromosome = None
 
         self.participants, self.activities = data_reader.read_data17(data)
-        print (self.activities)
-        print (self.participants)
+        #print (self.activities)
+        #print (self.participants)
         self.init_population()
 
     def calc_pop_fitnesses(self):
@@ -134,11 +134,16 @@ class ga_oratorio:
 
     def init_chromosome(self):
         # creates a random chromosome
-        chromosome = [None] * len(self.participants)  # preinit the list
-        for i, name in enumerate(self.participants):
-            p1 = copy.deepcopy(self.participants[name])
+        chromosome = []
+        for i, participant in enumerate(self.participants):
+            p1 = copy.deepcopy(participant)
+            #fill activities
+            #since index == activity, sort indices by scores
+            top_choices = [ y[0] for y in sorted(enumerate(p1["pref"]),
+                key=lambda x:x[1]) ]
+            p1["activities"] = top_choices[:self.n_days] 
             random.shuffle(p1["activities"])
-            chromosome[p1["id"]] = copy.deepcopy(p1)
+            chromosome += [p1]
         return chromosome
 
     def init_population(self):
@@ -151,7 +156,7 @@ class ga_oratorio:
     def roulette_select(self, ftns, pcnt):
         # input: chromosome fitnesses, output: indices of surviving chromosomes
         # fitness closer to 0: better
-        # TODO fitness is POSITIVE, you want to minimize it
+        # fitness is POSITIVE, you want to minimize it
         s = max(ftns)
         # subtract every value from s to invert importance
         ftns[:] = [1 - x / s for x in ftns]
@@ -194,7 +199,7 @@ class ga_oratorio:
         r = randy_marsh() % len(chromosome)
         random.shuffle(chromosome[r]["activities"])
 
-    def fitness(self, chromosome, gsv_weight=1, aigv_weight=1):
+    def fitness(self, chromosome, gsv_weight=1, aigv_weight=0.1):
         # build groups
         groups = []
         for day in range(self.n_days):
@@ -231,7 +236,7 @@ class ga_oratorio:
 
 if __name__ == "__main__":
     ga = ga_oratorio(data="../data/delavnice_2017.csv", pop_size=100, n_phases=30,
-                     crossover_chance=0.7, mutation_chance=0.7)
+                     crossover_chance=0.5, mutation_chance=0.2)
     ga.evolve()
 
     #ga.build_day_plan()

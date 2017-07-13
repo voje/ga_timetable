@@ -57,12 +57,12 @@ def read_data17(path):
                         "count": 0}]
             else:
                 par = { "name": row[0],
-                        "age": row[1],
+                        "grade": int(row[1]),
                         "pref": [],
-                        "act": []
+                        "activities": []
                         }
                 for i,pref in enumerate(row[7:19]):
-                    par["pref"] += [pref]
+                    par["pref"] += [int(pref)]
                 participants += [par]
         return (participants, activities)
     print ("Finished reading data.")
