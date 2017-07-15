@@ -19,7 +19,10 @@ def randy_marsh():
 
 #SET NUMBER OF DAYS
 n_days = 4
-
+activities = None
+participants = None
+chr_id = 0
+DEBUG1 = True
 
 class Ga_oratorio:
     def __init__(self, data="../data/delavnice.csv", pop_size=20, n_phases=10,
@@ -33,10 +36,11 @@ class Ga_oratorio:
 
         self.day_plan = []  # build at the end
 
-        self.best_fitness = sys.maxsize
         self.best_chromosome = None
 
-        self.participants, self.activities = data_reader.read_data17(data)
+        global participants
+        global activities
+        participants, activities = data_reader.read_data17(data)
         #print (self.activities)
         #print (self.participants)
 
@@ -46,84 +50,97 @@ class Ga_oratorio:
     def init_population(self):
         print("Initializing population:")
         for i in range(self.pop_size):
-            chrm = Chromosome(self.participants)
+            chrm = Chromosome(participants=participants)
             self.population += [chrm]
 
     def calc_pop_fitnesses(self):
-        fitnesses = []
+        all_fit = []
+        all_sum = 0
         for chromosome in self.population:
             f = chromosome.fitness
-            fitnesses += [f]
-            if f < self.best_fitness:
+            all_fit += [f]
+            all_sum += f
+            if self.best_chromosome is None:
+                self.best_chromosome = chromosome
+            elif f < self.best_chromosome.fitness:
                 self.best_chromosome = copy.deepcopy(chromosome)
-        #print (fitnesses)
-        return fitnesses
-
-    def calc_best_fitness(self):
-        best = sys.maxsize
-        idx = -1
-        for i, chromosome in enumerate(self.population):
-            f = chromosome.fitness
-            if f < best:
-                idx = i
-                best = f
-        return (idx, best)
+        avg = all_sum/len(all_fit)
+        """
+        for f in sorted(all_fit):
+            print (f)
+        print ("------")
+        """
+        return (all_fit, avg)
 
     def evolve(self):
         phase = 0
         print("Begin evolving.")
+        pop_fit,avg_fit = self.calc_pop_fitnesses()
         while phase < self.n_phases:
-            pop_fitnesses = self.calc_pop_fitnesses()
-            
-            #TODO
-            #idxs of fitnesses [smaller (better)  to larger (worse) fitnesses]
-            #crossover + remove worst
-            #mutate
+
+            #testing:
+            #pop_fit = [ 26,73,3,78,43,13 ] 
+
+            #sorted indices from best fitness (lowest variance) to worst fitness
+            sorted_fit = [ y[0] for y in sorted(enumerate(pop_fit), key=lambda x:x[1]) ]
+            #print (pop_fit)
+            #print (sorted_fit)
 
             # pick chromosomes for crossover
-            cross_sel = self.roulette_select(pop_fitnesses,
-                                             self.crossover_chance)
-            # sorted indices for fitness
-            sorted_fit_idcs = [i[0] for i in sorted(
-                enumerate(pop_fitnesses), key=lambda x:x[1], reverse=False)]
-            # new population excludes len(cross_sel) worst chromosomes
-            new_population = [self.population[x]
-                              for x in sorted_fit_idcs[len(cross_sel):]]
-            # add len(cross_sel) with crossover
+            cross_sel = self.roulette_select(pop_fit, self.crossover_chance)
+            #print (cross_sel)
+
+            #perform crossover
+            new_population = []
+            n_added = 0
             for i in cross_sel:
                 # randomly pick another one from cross_sel and cross
                 j = cross_sel[randy_marsh() % len(cross_sel)]
-                new_2_chromosomes = self.population[i].crossover(
-                        self.population[j] )
-                # pick one and add him to new_population
-                new_population += [new_2_chromosomes[0]]
+                if i == j:
+                    continue    #don't crossover same chromosome
+                
+                new_2_chromosomes = self.population[i].crossover( self.population[j] )
+                if new_2_chromosomes[0].fitness < self.population[i].fitness and new_2_chromosomes[0].fitness < self.population[j].fitness:
+                    new_population += [new_2_chromosomes[0]]
+                    n_added += 1
+                if new_2_chromosomes[1].fitness < self.population[i].fitness and new_2_chromosomes[1].fitness < self.population[j].fitness:
+                    new_population += [new_2_chromosomes[1]]
+                    n_added += 1
 
-            #mutation #TODO
-            """
-            for i in range(math.floor(100 * self.mutation_chance)):
-                if randy_marsh() % 100 > self.mutation_chance * 100:
-                    self.mutation(
-                        new_population[randy_marsh() % len(new_population)])
-            self.population = new_population
-            """
-            bf = self.calc_best_fitness()
-            print("End of phase: %d\t|\tbest_fitness: %f" % (phase, bf[1]))
+            #print ("len_pop: %d, n_added: %d" % ( len(self.population), n_added) )
+            #remove some bad chromosomes
+            if n_added > 0:
+                new_population += [ self.population[x] for x in sorted_fit[:-n_added] ]
+                self.population = new_population
+
+            #mutate random chromosomes (leave best intact)
+            pl = len(self.population)
+            for i in range(math.ceil(pl*self.mutation_chance)):
+                #pick random and mutate
+                ridx = randy_marsh()%pl
+                if self.population[ridx].id is not self.best_chromosome.id:
+                    self.population[ridx].mutate
+
+            pop_fit,avg_fit = self.calc_pop_fitnesses()
+            print("End of phase: %4d\t|\tbest_chromosome: %d (%3.3f)\t|\tavg fitness: %3.3f" % 
+                    (phase, self.best_chromosome.id, self.best_chromosome.fitness, avg_fit))
             phase += 1
         print("Evolution concluded.")
 
     def build_day_plan(self):
+        self.day_plan = []
         for i in range(n_days):
             self.day_plan += [[]]
-            for j,a in enumerate(self.activities):
+            for j,a in enumerate(activities):
                 self.day_plan[i] += [[]]
 
         bc = self.best_chromosome
-        for person in bc:
+        for person in bc.chromosome:
             for i,act in enumerate(person["activities"]):
                 self.day_plan[i][act] += [ "{}-{}".format(person["grade"],
                     person["name"]) ]
 
-        print (self.day_plan[0])
+        #print (self.day_plan[0])
 
     def export_data(self, outfilepath):
         self.build_day_plan()
@@ -131,7 +148,9 @@ class Ga_oratorio:
         with open(outfilepath, 'w') as csvfile:
             spamwriter = csv.writer(
                 csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            header = [x["name"] for x in self.activities] * n_days
+            header = []
+            for d in range (n_days):
+                header += [ "Dan {}: {}".format(d, x["name"]) for x in activities ]
             spamwriter.writerow(header)
 
             stop = False
@@ -156,7 +175,7 @@ class Ga_oratorio:
         # fitness is POSITIVE, you want to minimize it
         s = max(ftns)
         # subtract every value from s to invert importance
-        ftns[:] = [1 - x / s for x in ftns]
+        ftns[:] = [pow(1 - x / s, 2) for x in ftns] #pow to increase difference
         # print(ftns)
 
         # create roulette_wheel
@@ -188,14 +207,26 @@ class Ga_oratorio:
 
 class Chromosome:
     def __init__(self, participants=None, chromosome=None):
+        global chr_id
+        self.id = chr_id
+        chr_id += 1
         if chromosome is not None:
-            self.chromosome = chromosome
+            self.chromosome = copy.deepcopy(chromosome)
         elif participants is not None:
             self.chromosome = self.init_chromosome(participants)
         else:
             raise Exception("Need more data to initalize a chromosome.")
+
         self.fitness = 9999999
-        self.update_fitness
+        self.update_fitness()
+
+    def short_print(self):
+        print ("[%4d] (%3.3f)" % (self.id, self.fitness) )
+        if not self.chromosome:
+            l = "Empty"
+        else:
+            l = [ p["id"] for p in self.chromosome ]
+        print (l)
 
     def init_chromosome(self, participants):
         # creates a random chromosome
@@ -211,12 +242,12 @@ class Chromosome:
             chromosome += [p1]
         return chromosome
 
-    def update_fitness (self, gsv_weight=1, aigv_weight=0.1):
+    def update_fitness (self, gsv_weight=1, aigv_weight=1):
         # build groups
         groups = []
         for day in range(n_days):
             groups += [[]]
-            for activity in range(len(self.activities)):
+            for activity in range(len(activities)):
                 groups[day] += [[]]
         for person in self.chromosome:
             for day, act in enumerate(person["activities"]):
@@ -247,29 +278,50 @@ class Chromosome:
         return f
 
     def mutate(self):
+        #print ("Mutating %d." % self.id)
         # select random child, swap two items in his activities
         r = randy_marsh() % len(self.chromosome)
         random.shuffle(self.chromosome[r]["activities"])
         self.update_fitness()
 
-    def crossover(self, chromosome2):
+    def crossover(self, chromosome2, prnt=False):
         r = randy_marsh() % len(self.chromosome)
-        ret1 = Chromosome( self.chromosome[:r] + chromosome2.chromosome[r:] ) 
-        ret2 = Chromosome( chromosome2.chromosome[:r] + self.chromosome[r:] )
-        return (ret1, ret2)
-
-
-
+        ret1 = self.chromosome[:r] + chromosome2.chromosome[r:]
+        chr1 = Chromosome (chromosome=ret1)
+        ret2 = chromosome2.chromosome[:r] + self.chromosome[r:]
+        chr2 = Chromosome (chromosome=ret2)
+        if prnt and self.id == chromosome2.id:
+            print ("Crossover::Self.fitness: %f, c2.fitness: %f, r1.fitness: %f, r2.fitness: %f." % (self.fitness, chromosome2.fitness, chr1.fitness, chr2.fitness))
+        return (chr1, chr2)
 
 if __name__ == "__main__":
-    ga = Ga_oratorio(data="../data/delavnice_2017.csv", pop_size=100, n_phases=30,
-                     crossover_chance=0.5, mutation_chance=0.2)
-    ga.evolve()
+    ga = Ga_oratorio(data="../data/delavnice_2017.csv", pop_size=50, n_phases=3, crossover_chance=0.9, mutation_chance=0.9)
 
-    #ga.build_day_plan()
+    ga.evolve()
+    for x in ga.best_chromosome.chromosome:
+        print ("{:20s}: {}".format(x["name"], x["activities"]))
+    ga.build_day_plan()
+    for d,day in enumerate(ga.day_plan):
+        for a,act in enumerate(day):
+            print ("Day {} - {}:\n{}".format(d,activities[a]["name"],act))
     ga.export_data("../data/delavnice_2017_out.csv")
 
     # ga.fitness(ga.population[0])
     #ga.roulette_select([-30, -50, -1, -20, -70], 5)
     #ch = ga.init_chromosome()
     # ga.mutation(ch)
+
+"""
+    test1 = [5,4,7,9,1]
+    test2 = [3,6,5,1,3]
+    test1 = test2
+    print (test1)
+    print (test2)
+    r = randy_marsh() % len(test1)
+    ret1 = test1[:r] + test2[r:]  
+    ret2 = test2[:r] + test1[r:] 
+    print ("--- %d ---" % r)
+    print (ret1)
+    print (ret2)
+"""
+

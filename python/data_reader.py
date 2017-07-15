@@ -44,6 +44,7 @@ def read_data17(path):
     print ("Reading data from %s." % path)
     participants = []
     activities = []
+    participant_id = 0;
     with open(path, "r") as csvfile:
         reader = csv.reader(csvfile, delimiter=",")
         for row in reader:
@@ -56,11 +57,13 @@ def read_data17(path):
                         "id": i,
                         "count": 0}]
             else:
-                par = { "name": row[0],
+                par = { "id": participant_id,
+                        "name": row[0],
                         "grade": int(row[1]),
                         "pref": [],
                         "activities": []
                         }
+                participant_id += 1
                 for i,pref in enumerate(row[7:19]):
                     par["pref"] += [int(pref)]
                 participants += [par]
