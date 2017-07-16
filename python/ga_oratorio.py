@@ -21,12 +21,18 @@ def randy_marsh():
 n_days = 4
 activities = None
 participants = None
+grouped = {}
 chr_id = 0
 DEBUG1 = True
 
 class Ga_oratorio:
     def __init__(self, data="../data/delavnice.csv", pop_size=20, n_phases=10,
                  crossover_chance=0.7, mutation_chance=0.7):
+
+        global participants
+        global activities
+        global grouped
+
         print("Initializiing ga_oratorio with population size: %d." % (pop_size))
 
         self.pop_size = pop_size
@@ -38,14 +44,73 @@ class Ga_oratorio:
 
         self.best_chromosome = None
 
-        global participants
-        global activities
         participants, activities = data_reader.read_data17(data)
+
+        self.group_participants(["Neža Klemenčič", "Eva Klemenčič", "Zala Bertoncelj"]) #fine tuning (some participants want to be together)
+        self.group_participants(["Jan Potočnik", "Urban Porenta"])
+        self.group_participants(["Neja Potočnik", "Iza Šink", "Nika Krmelj"])
+        self.group_participants(["Anja Hadalin ", "Karmen Logonder"])
+        for key in grouped:
+            for par in participants:
+                if par["id"] == key:
+                    print (par)
+            print ("{}{}".format(key, grouped[key]))
+
         #print (self.activities)
         #print (self.participants)
 
         self.population = []
         self.init_population()
+
+    # group_participants and return_groups take care of participants that wish to be together (they handle them as one)
+    def group_participants(self, names):
+        global participants
+        global grouped
+
+        #!! this means the participants will go to same
+        #!! activities as the first one in names
+        pp = []
+        for name in names:
+            for i,par in enumerate(participants):
+                if par["name"] == name:
+                    pp += [par]
+                    participants.remove(par)
+        #check for same activities
+        grades = [ x["grade"] for x in pp ]
+        grp = {
+            "id": pp[0]["id"],
+            "name": "grp_{}".format(pp[0]["id"]),
+            "grade": sum(grades)/len(grades),
+            "count": len(pp),
+            "pref": pp[0]["pref"],
+            "activities": pp[0]["activities"]
+                }
+        grouped[pp[0]["id"]] = pp
+        participants += [grp]
+
+    def return_groups(self, chromo):
+        global grouped
+        for key in grouped:
+            for par in chromo.chromosome:
+                if par["id"] == key:
+                    #replace group with participants, keep activities
+                    for p in grouped[key]:
+                        p["activities"] = par["activities"]
+                    chromo.chromosome.remove(par)
+                    chromo.chromosome += grouped[key]
+                    break
+
+        for participant in chromo.chromosome:
+            if participant["id"] in grouped:
+                saved_id = participant["id"]
+                #put activities into participans, saved in goruped
+                for saved_p in grouped[saved_id]:
+                    saved_p["activities"] = participant["activities"]
+                chromo.chromosome.remove(participant)
+                chromo.chromosome += grouped[saved_id]
+                del grouped[saved_id]
+                #print ( ["--{}".format(p["name"]) for p in chromo.chromosome ] )
+        return chromo
 
     def init_population(self):
         print("Initializing population:")
@@ -134,17 +199,13 @@ class Ga_oratorio:
             for j,a in enumerate(activities):
                 self.day_plan[i] += [[]]
 
-        bc = self.best_chromosome
+        bc = self.return_groups( self.best_chromosome )
         for person in bc.chromosome:
             for i,act in enumerate(person["activities"]):
                 self.day_plan[i][act] += [ "{}-{}".format(person["grade"],
                     person["name"]) ]
 
-        #print (self.day_plan[0])
-
     def export_data(self, outfilepath):
-        self.build_day_plan()
-
         with open(outfilepath, 'w') as csvfile:
             spamwriter = csv.writer(
                 csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
@@ -251,23 +312,23 @@ class Chromosome:
                 groups[day] += [[]]
         for person in self.chromosome:
             for day, act in enumerate(person["activities"]):
-                groups[day][act] += [person["grade"]]
+                groups[day][act] += [person]
 
         # group size variance
         grp_sizes = []
-        for i in groups:
-            for j in i:
-                grp_sizes += [len(j)]
+        for day in groups:
+            for act in day:
+                grp_sizes += [sum([person["count"] for person in act])]
         gsv = statistics.variance(grp_sizes)
 
         # average intragroup grade(age) variance
         aigv = 0
         count = 0
-        for i in groups:
-            for j in i:
-                if (len(j) < 2):
+        for day in groups:
+            for act in day:
+                if len(act) < 2:
                     continue
-                aigv += statistics.variance(j)
+                aigv += statistics.variance([ person["grade"] for person in act ])
                 count += 1
         aigv = aigv / count
 
@@ -298,30 +359,14 @@ if __name__ == "__main__":
     ga = Ga_oratorio(data="../data/delavnice_2017.csv", pop_size=50, n_phases=3, crossover_chance=0.9, mutation_chance=0.9)
 
     ga.evolve()
+    ga.build_day_plan()
+
     for x in ga.best_chromosome.chromosome:
         print ("{:20s}: {}".format(x["name"], x["activities"]))
-    ga.build_day_plan()
+
     for d,day in enumerate(ga.day_plan):
         for a,act in enumerate(day):
             print ("Day {} - {}:\n{}".format(d,activities[a]["name"],act))
+
     ga.export_data("../data/delavnice_2017_out.csv")
-
-    # ga.fitness(ga.population[0])
-    #ga.roulette_select([-30, -50, -1, -20, -70], 5)
-    #ch = ga.init_chromosome()
-    # ga.mutation(ch)
-
-"""
-    test1 = [5,4,7,9,1]
-    test2 = [3,6,5,1,3]
-    test1 = test2
-    print (test1)
-    print (test2)
-    r = randy_marsh() % len(test1)
-    ret1 = test1[:r] + test2[r:]  
-    ret2 = test2[:r] + test1[r:] 
-    print ("--- %d ---" % r)
-    print (ret1)
-    print (ret2)
-"""
 

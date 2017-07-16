@@ -2,44 +2,6 @@
 import csv
 import sys
 
-def read_data16(self, path):
-    par_id = 0
-    with open(path, "r") as csvfile:
-        reader = csv.reader(csvfile, delimiter=",")
-        for row in reader:
-            if not self.activities:
-                # if activities is uninitiated (first row of file)
-                for i in range(0, len(row)):
-                    self.activities += [{
-                        "id": i,
-                        "name": row[i],
-                        "count": 0}]
-            else:
-                # else, add to participants
-                for i in range(0, len(row)):
-                    tmps = row[i]
-                    sp = tmps.split(" ")
-                    if (len(sp) < 2):
-                        continue  # empty cell
-
-                    grade = int(sp[0])
-                    name = " ".join(sp[1:])
-                    activity_id = i
-
-                    if name not in self.participants:
-                        self.participants[name] = {
-                            "id": par_id,
-                            "name": name,
-                            "grade": grade,
-                            "activities": [activity_id]}
-                        par_id += 1
-                    else:
-                        self.participants[name][
-                            "activities"] += [activity_id]
-
-                    # update count in self.activities
-                    self.activities[i]["count"] += 1
-
 def read_data17(path):
     print ("Reading data from %s." % path)
     participants = []
@@ -60,6 +22,7 @@ def read_data17(path):
                 par = { "id": participant_id,
                         "name": row[0],
                         "grade": int(row[1]),
+                        "count": 1,
                         "pref": [],
                         "activities": []
                         }
