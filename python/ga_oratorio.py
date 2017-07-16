@@ -99,6 +99,7 @@ class Ga_oratorio:
                     chromo.chromosome.remove(par)
                     chromo.chromosome += grouped[key]
                     break
+        return chromo
 
         for participant in chromo.chromosome:
             if participant["id"] in grouped:
@@ -199,7 +200,8 @@ class Ga_oratorio:
             for j,a in enumerate(activities):
                 self.day_plan[i] += [[]]
 
-        bc = self.return_groups( self.best_chromosome )
+        bc = self.best_chromosome
+        bc = self.return_groups( bc )
         for person in bc.chromosome:
             for i,act in enumerate(person["activities"]):
                 self.day_plan[i][act] += [ "{}-{}".format(person["grade"],
@@ -303,7 +305,7 @@ class Chromosome:
             chromosome += [p1]
         return chromosome
 
-    def update_fitness (self, gsv_weight=1, aigv_weight=1):
+    def update_fitness (self, gsv_weight=0.4, aigv_weight=0.8):
         # build groups
         groups = []
         for day in range(n_days):
@@ -356,7 +358,9 @@ class Chromosome:
         return (chr1, chr2)
 
 if __name__ == "__main__":
-    ga = Ga_oratorio(data="../data/delavnice_2017.csv", pop_size=50, n_phases=3, crossover_chance=0.9, mutation_chance=0.9)
+    # Inside class __init__ set groups of participants that want to be together
+    # Set global variable n_days
+    ga = Ga_oratorio(data="../data/delavnice_2017.csv", pop_size=100, n_phases=300, crossover_chance=0.5, mutation_chance=0.1)
 
     ga.evolve()
     ga.build_day_plan()
