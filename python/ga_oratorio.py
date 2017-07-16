@@ -305,7 +305,7 @@ class Chromosome:
             chromosome += [p1]
         return chromosome
 
-    def update_fitness (self, gsv_weight=0.4, aigv_weight=0.8):
+    def update_fitness (self, gsv_weight=0.8, aigv_weight=0.8):
         # build groups
         groups = []
         for day in range(n_days):
@@ -360,17 +360,40 @@ class Chromosome:
 if __name__ == "__main__":
     # Inside class __init__ set groups of participants that want to be together
     # Set global variable n_days
-    ga = Ga_oratorio(data="../data/delavnice_2017.csv", pop_size=100, n_phases=300, crossover_chance=0.5, mutation_chance=0.1)
 
-    ga.evolve()
-    ga.build_day_plan()
+    cc = 0
+    mc = 1 
+    for rep in range(10): 
+        n_days = 4
+        activities = None
+        participants = None
+        grouped = {}
+        chr_id = 0
+        DEBUG1 = True
 
-    for x in ga.best_chromosome.chromosome:
-        print ("{:20s}: {}".format(x["name"], x["activities"]))
+        ga = Ga_oratorio(data="../data/delavnice_2017.csv", pop_size=100, n_phases=300, crossover_chance=cc, mutation_chance=mc)
 
-    for d,day in enumerate(ga.day_plan):
-        for a,act in enumerate(day):
-            print ("Day {} - {}:\n{}".format(d,activities[a]["name"],act))
+        ga.evolve()
+        ga.build_day_plan()
 
-    ga.export_data("../data/delavnice_2017_out.csv")
+        for x in ga.best_chromosome.chromosome:
+            print ("{:20s}: {}".format(x["name"], x["activities"]))
+
+        for d,day in enumerate(ga.day_plan):
+            for a,act in enumerate(day):
+                print ("Day {} - {}:\n{}".format(d,activities[a]["name"],act))
+
+        ga.export_data("../data/out_{}.csv".format(rep))
+
+        cc += 0.1
+        mc -= 0.1
+
+
+
+
+
+
+
+
+
 
