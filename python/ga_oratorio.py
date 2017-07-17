@@ -20,10 +20,13 @@ def randy_marsh():
 #SET NUMBER OF DAYS
 n_days = 4
 activities = None
+activity_max = 0
 participants = None
 grouped = {}
 chr_id = 0
 DEBUG1 = True
+global g_w1
+global g_w2
 
 class Ga_oratorio:
     def __init__(self, data="../data/delavnice.csv", pop_size=20, n_phases=10,
@@ -32,6 +35,7 @@ class Ga_oratorio:
         global participants
         global activities
         global grouped
+        global activity_max
 
         print("Initializiing ga_oratorio with population size: %d." % (pop_size))
 
@@ -46,15 +50,19 @@ class Ga_oratorio:
 
         participants, activities = data_reader.read_data17(data)
 
+        activity_max = math.floor ( len(participants) / len(activities) * n_days )
+
         self.group_participants(["Neža Klemenčič", "Eva Klemenčič", "Zala Bertoncelj"]) #fine tuning (some participants want to be together)
         self.group_participants(["Jan Potočnik", "Urban Porenta"])
         self.group_participants(["Neja Potočnik", "Iza Šink", "Nika Krmelj"])
         self.group_participants(["Anja Hadalin ", "Karmen Logonder"])
+        """
         for key in grouped:
             for par in participants:
                 if par["id"] == key:
                     print (par)
             print ("{}{}".format(key, grouped[key]))
+        """
 
         #print (self.activities)
         #print (self.participants)
@@ -292,20 +300,41 @@ class Chromosome:
         print (l)
 
     def init_chromosome(self, participants):
+        global activities
+        # reset counter
+        for a in activities:
+            a["count"] = 0
+
         # creates a random chromosome
         chromosome = []
         for i, participant in enumerate(participants):
             p1 = copy.deepcopy(participant)
-            #fill activities
-            #since index == activity, sort indices by scores
-            top_choices = [ y[0] for y in sorted(enumerate(p1["pref"]),
-                key=lambda x:x[1]) ]
-            p1["activities"] = top_choices[:n_days] 
+
+            # in p1["pref"], we have activity ids [1,2,...] sorted by preference
+            # since our representation starts with [0,1,...], we need to -1 every id
+            acts = []
+            day = 0
+            for act in p1["pref"]:
+                act_id = act-1
+                if day == n_days:
+                    break
+                if activities[act_id]["count"] >= activity_max:
+                    continue
+                activities[act_id]["count"] += 1
+                acts += [act_id]
+                day += 1
+            p1["activities"] = copy.deepcopy(acts)
+
             random.shuffle(p1["activities"])
             chromosome += [p1]
+
+        #print (chromosome)
         return chromosome
 
-    def update_fitness (self, gsv_weight=0.8, aigv_weight=0.8):
+    def update_fitness (self, gsv_weight=1, aigv_weight=1):
+        gsv_weight = g_w1
+        aigv_weight = g_w2
+
         # build groups
         groups = []
         for day in range(n_days):
@@ -361,9 +390,9 @@ if __name__ == "__main__":
     # Inside class __init__ set groups of participants that want to be together
     # Set global variable n_days
 
-    cc = 0
-    mc = 1 
-    for rep in range(10): 
+    g_w1 = 1
+    g_w2 = 0 
+    for rep in range(1): 
         n_days = 4
         activities = None
         participants = None
@@ -371,7 +400,7 @@ if __name__ == "__main__":
         chr_id = 0
         DEBUG1 = True
 
-        ga = Ga_oratorio(data="../data/delavnice_2017.csv", pop_size=100, n_phases=300, crossover_chance=cc, mutation_chance=mc)
+        ga = Ga_oratorio(data="../data/delavnice_2017.csv", pop_size=50, n_phases=300, crossover_chance=0.7, mutation_chance=0.3)
 
         ga.evolve()
         ga.build_day_plan()
@@ -385,9 +414,9 @@ if __name__ == "__main__":
 
         ga.export_data("../data/out_{}.csv".format(rep))
 
-        cc += 0.1
-        mc -= 0.1
-
+        g_w1 -= 0.1
+        g_w2 += 0.1
+        
 
 
 
