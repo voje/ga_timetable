@@ -1,0 +1,5 @@
+README.md
+timetablenator.egg-info/PKG-INFO
+timetablenator.egg-info/SOURCES.txt
+timetablenator.egg-info/dependency_links.txt
+timetablenator.egg-info/top_level.txt

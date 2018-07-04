@@ -6,22 +6,27 @@ import csv
 import random
 import statistics
 import copy
+import logging
+
+log = logging.getLogger(__name__)
 
 # add script folder to path for imports
 full_path = os.path.abspath(os.path.dirname(sys.argv[0]))
 sys.path.append(full_path)
 
-import data_reader
+
+class GeneticAlg:
+    def __init__(self, par, act, ndays):
+        self.par = par
+        self.act = act
+        self.NDAYS = ndays
 
 
 def randy_marsh():
     return int.from_bytes(os.urandom(4), byteorder="big")
 
-#SET NUMBER OF DAYS
-n_days = 4
-activities = None
+# SET NUMBER OF DAYS
 activity_max = 0
-participants = None
 grouped = {}
 chr_id = 0
 DEBUG1 = True
