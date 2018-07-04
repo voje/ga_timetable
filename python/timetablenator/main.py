@@ -14,4 +14,4 @@ if __name__ == "__main__":
     bf = BruteForce(participants, activities, ndays=4)
     days = bf.run()
     write_path = "../data/urnik2018.csv"
-    csvr.write_csv(bf.days, write_path)
+    csvr.write_csv(bf.best_pop, write_path)
