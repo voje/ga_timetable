@@ -7,4 +7,5 @@ setup(
     author="Kristjan Voje",
     author_email="kristjan.voje@gmail.com",
     licence="MIT",
+    install_requires=["numpy"],
 )

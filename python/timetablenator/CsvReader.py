@@ -31,7 +31,7 @@ class CsvReader:
                     for i, act_name in enumerate(row[self.ACTIVITIES_COL:]):
                         activities += [{
                             "name": act_name,
-                            "id": re_fd.findall(act_name)[-1],
+                            "id": int(re_fd.findall(act_name)[-1]) - 1,
                             "n_part": 0,
                         }]
 
@@ -46,7 +46,7 @@ class CsvReader:
                     }
                     participant_id += 1
                     for act_id in row[self.ACTIVITIES_COL:]:
-                        par["pref"] += [int(act_id)]
+                        par["pref"] += [int(act_id) - 1]
                     participants += [par]
         log.info(
             "Number of participants: {}.\n"
@@ -57,7 +57,31 @@ class CsvReader:
                 participants[-1]["name"], len(activities)
             )
         )
+        log.warning(
+            "All activity IDs have been decreased by 1, "
+            "to fall in range [0, 1,.... N].")
         return (participants, activities)
+
+    def write_csv(self, days, path):
+        with open(path, "w") as f:
+            for i in range(len(days)):
+                for j in range(len(days[i])):
+                    f.write("dan_{}-del_{},".format(i + 1, j + 1))
+            row = 0
+            keep_writing = True
+            while keep_writing:
+                keep_writing = False
+                f.write("\n")
+                for day in days:
+                    for act in day:
+                        if row < len(act["par"]):
+                            keep_writing = True
+                            participant = act["par"][row]
+                            f.write("{}_{},".format(
+                                participant["name"], participant["grade"]))
+                        else:
+                            f.write(",")
+                row += 1
 
 
 if __name__ == "__main__":
