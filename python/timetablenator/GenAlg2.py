@@ -10,7 +10,7 @@ class GenAlg:
     def __init__(
         self, par, ndays, population_size,
         mutation_rate, crossover_rate,
-        number_of_runs
+        number_of_runs, optimal_grp_size
     ):
         # see CsvReader for format of par
         self.par = par
@@ -21,11 +21,12 @@ class GenAlg:
         self.MR = mutation_rate  # % of rows affected by mutate()
         self.CR = crossover_rate  # % of top members to crossover()
         self.NR = number_of_runs
+        self.OGS = optimal_grp_size
         # sort these together:
         self.matrices = []
         self.gsv_scores = []
         self.aav_scores = []
-        self.best_gsv_score = 9000
+        self.best_score = 9000
         self.best_member = None
 
     def sanity_check(self):
@@ -126,13 +127,19 @@ class GenAlg:
         #     group_sizes.shape, group_age_variances.shape))
 
         # group size variance
-        gsv = np.var(group_sizes)
+        # gsv = np.var(group_sizes)
+
+        # let's use average difference from
+        # optimal grp size
+        gsv = np.max(np.absolute(group_sizes - self.OGS))
+
         # average age variance
         aav = np.average(group_age_variances)
         # log.debug(
         #     "\ngsv: {:.2f}\n"
         #     "aav: {:.2f}\n".format(gsv, aav)
         # )
+
         return (gsv, aav)
 
     def init_population(self):
@@ -168,6 +175,14 @@ class GenAlg:
         self.act = np.arange(
             np.min(self.matrices[0]), np.max(self.matrices[0]) + 1)
 
+    def find_best_score(self):
+        scores = (
+            np.array(self.gsv_scores) +
+            np.array(self.aav_scores)
+        )
+        idx = np.argmin(scores)
+        return (idx, scores[idx])
+
     def run(self):
         tstart = time()
         self.init_population()
@@ -178,16 +193,17 @@ class GenAlg:
             # self.sanity_check()
 
             # pick best
-            bidx = np.argmin(self.gsv_scores)
-            if self.gsv_scores[bidx] < self.best_gsv_score:
-                self.best_gsv_score = self.gsv_scores[bidx]
-                self.best_member = self.matrices[bidx].copy()
+            bs_idx, bs = self.find_best_score()
+            if bs < self.best_score:
+                self.best_score = bs
+                self.best_member = self.matrices[bs_idx].copy()
 
             log.info(
-                "[{:>3}] gsv:{:.2f} aav:{:.2f}".format(
+                "[{:>3}] gsv:{:.2f} aav:{:.2f} score:{:.2f}".format(
                     i,
                     np.average(self.gsv_scores),
-                    np.average(self.aav_scores)
+                    np.average(self.aav_scores),
+                    bs
                 )
             )
         log.info("Finished in {:.2f}s.".format(time() - tstart))

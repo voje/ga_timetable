@@ -16,12 +16,14 @@ if __name__ == "__main__":
     # days = bf.run()
 
     good = (200, 50)
+    hmmm = (50, 100)
     test = (10, 10)
     # good = test
+    good = hmmm
     ga2 = GenAlg(
         participants, ndays=4, population_size=good[0],
-        mutation_rate=0.08, crossover_rate=0.1,
-        number_of_runs=good[1]
+        mutation_rate=0.5, crossover_rate=0.6,
+        number_of_runs=good[1], optimal_grp_size=10
     )
     ga2.run()
 
