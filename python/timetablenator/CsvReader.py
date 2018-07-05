@@ -2,6 +2,8 @@
 import csv
 import logging
 import re
+import numpy as np
+
 
 re_fd = re.compile(r"\d")
 
@@ -82,6 +84,19 @@ class CsvReader:
                         else:
                             f.write(",")
                 row += 1
+            log.info("Data written to: {}".format(path))
+
+    def write_ga2_csv(self, M, participants, path):
+        act = list(np.unique(M))  # activity ids
+        days = [[] for x in range(M.shape[1])]
+        for d in days:
+            d.extend([{"par": []} for x in range(len(act))])
+        for day_idx, col in enumerate(M.T):
+            for par_idx, act_idx in enumerate(col):
+                days[day_idx][act_idx]["par"].append(participants[par_idx])
+
+        # format fixed, pass it to write_csv
+        self.write_csv(days, path)
 
 
 if __name__ == "__main__":
