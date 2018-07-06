@@ -15,15 +15,16 @@ if __name__ == "__main__":
     # bf = BruteForce(participants, activities, ndays=4)
     # days = bf.run()
 
-    good = (200, 50)
-    hmmm = (50, 100)
-    test = (10, 10)
-    # good = test
-    good = hmmm
+    good = (200, 200, 0.10, 0.20, 1, 0)
+    args = good
     ga2 = GenAlg(
-        participants, ndays=4, population_size=good[0],
-        mutation_rate=0.5, crossover_rate=0.6,
-        number_of_runs=good[1], optimal_grp_size=10
+        participants, ndays=4,
+        population_size=args[0],
+        number_of_runs=args[1],
+        mutation_rate=args[2],
+        crossover_rate=args[3],
+        group_size_weight=args[4],
+        age_weight=args[5]
     )
     ga2.run()
 

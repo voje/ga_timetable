@@ -10,7 +10,8 @@ class GenAlg:
     def __init__(
         self, par, ndays, population_size,
         mutation_rate, crossover_rate,
-        number_of_runs, optimal_grp_size
+        number_of_runs, group_size_weight,
+        age_weight
     ):
         # see CsvReader for format of par
         self.par = par
@@ -21,13 +22,20 @@ class GenAlg:
         self.MR = mutation_rate  # % of rows affected by mutate()
         self.CR = crossover_rate  # % of top members to crossover()
         self.NR = number_of_runs
-        self.OGS = optimal_grp_size
         # sort these together:
         self.matrices = []
         self.gsv_scores = []
+        self.GW = group_size_weight
         self.aav_scores = []
+        self.AW = age_weight
+        self.scores = []
         self.best_score = 9000
         self.best_member = None
+
+    def helper_norm(self, a):
+        # array normalization
+        na = (a - np.min(a)) / (np.max(a) - np.min(a))
+        return na
 
     def sanity_check(self):
         shape = self.matrices[0].shape
@@ -71,14 +79,16 @@ class GenAlg:
         nc = 0
         gsv_idx = np.argsort(self.gsv_scores)  # ascending
         aav_idx = np.argsort(self.aav_scores)
+
         # top 10%
-        top_ten = int(0.1 * len(self.matrices))
-        nc += top_ten
-        for i in range(top_ten):
-            self.matrices.extend(self.crossover(
-                self.matrices[gsv_idx[i]],
-                self.matrices[aav_idx[i]]
-            ))
+        # top_ten = int(0.1 * len(self.matrices))
+        # nc += top_ten
+        # for i in range(top_ten):
+        #     self.matrices.extend(self.crossover(
+        #         self.matrices[gsv_idx[i]],
+        #         self.matrices[aav_idx[i]]
+        #     ))
+
         while nc < nc_max:
             pair = np.random.choice(
                 np.arange(len(self.matrices)), 2, replace=False)
@@ -91,16 +101,16 @@ class GenAlg:
     def culling(self):
         self.update_scores()
         # Remove less fit members.
-        # leave best 300 by gsv
-        gsv_idx = np.argsort(self.gsv_scores)  # ascending
+        # leave best 300 by score
+        idx = np.argsort(self.scores)  # ascending
 
-        self.matrices = [self.matrices[i] for i in gsv_idx]
+        self.matrices = [self.matrices[i] for i in idx]
         self.matrices = self.matrices[:self.PS]
 
-        self.gsv_scores = [self.gsv_scores[i] for i in gsv_idx]
+        self.gsv_scores = [self.gsv_scores[i] for i in idx]
         self.gsv_scores = self.gsv_scores[:self.PS]
 
-        self.aav_scores = [self.aav_scores[i] for i in gsv_idx]
+        self.aav_scores = [self.aav_scores[i] for i in idx]
         self.aav_scores = self.aav_scores[:self.PS]
 
     def update_scores(self):
@@ -110,6 +120,12 @@ class GenAlg:
             gsv, aav = self.score_matrix(M)
             self.gsv_scores.append(gsv)
             self.aav_scores.append(aav)
+        self.gsv_scores = np.array(self.gsv_scores)
+        self.aav_scores = np.array(self.aav_scores)
+        self.scores = (
+            self.helper_norm(self.gsv_scores) * self.GW +
+            self.helper_norm(self.aav_scores) * self.AW
+        )
 
     def score_matrix(self, M):
         group_sizes = np.array([])
@@ -127,11 +143,7 @@ class GenAlg:
         #     group_sizes.shape, group_age_variances.shape))
 
         # group size variance
-        # gsv = np.var(group_sizes)
-
-        # let's use average difference from
-        # optimal grp size
-        gsv = np.max(np.absolute(group_sizes - self.OGS))
+        gsv = np.var(group_sizes)
 
         # average age variance
         aav = np.average(group_age_variances)
@@ -166,7 +178,7 @@ class GenAlg:
         #   T[i, :] = m[line, :]
         # log.debug(T[:40, :])
 
-        # Will need these two.
+        # Will need these arrays later.
         self.grades = np.array([
             x["grade"] for x in self.par
         ])
@@ -174,36 +186,29 @@ class GenAlg:
         # log.debug(self.grades[:10])
         self.act = np.arange(
             np.min(self.matrices[0]), np.max(self.matrices[0]) + 1)
-
-    def find_best_score(self):
-        scores = (
-            np.array(self.gsv_scores) +
-            np.array(self.aav_scores)
-        )
-        idx = np.argmin(scores)
-        return (idx, scores[idx])
+        # optimal group sizes (count every act, make hist)
 
     def run(self):
         tstart = time()
         self.init_population()
         for i in range(self.NR):
-            self.apply_crossovers()
             self.apply_mutations()
+            self.apply_crossovers()
             self.culling()
             # self.sanity_check()
 
             # pick best
-            bs_idx, bs = self.find_best_score()
+            bs_idx = np.argmin(self.scores)
+            bs = self.scores[bs_idx]
             if bs < self.best_score:
                 self.best_score = bs
                 self.best_member = self.matrices[bs_idx].copy()
 
             log.info(
-                "[{:>3}] gsv:{:.2f} aav:{:.2f} score:{:.2f}".format(
+                "[{:>3}] best_gsv:{:.4f} best_aav:{:.4f}".format(
                     i,
-                    np.average(self.gsv_scores),
-                    np.average(self.aav_scores),
-                    bs
+                    np.min(self.gsv_scores),
+                    np.min(self.aav_scores),
                 )
             )
         log.info("Finished in {:.2f}s.".format(time() - tstart))
