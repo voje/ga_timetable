@@ -4,3 +4,5 @@
 .Ruserdata
 
 */venv/
+python/data/input/*
+python/data/output/*

@@ -23,6 +23,8 @@ class GenAlg:
         self.CR = crossover_rate  # % of top members to crossover()
         self.NR = number_of_runs
         # sort these together:
+        self.best_init_score = 9000
+        self.best_init_pop = []
         self.matrices = []
         self.gsv_scores = []
         self.GW = group_size_weight
@@ -77,17 +79,20 @@ class GenAlg:
         # Scores need to be updated for this.
         nc_max = len(self.matrices) * self.CR
         nc = 0
-        gsv_idx = np.argsort(self.gsv_scores)  # ascending
-        aav_idx = np.argsort(self.aav_scores)
 
         # top 10%
-        # top_ten = int(0.1 * len(self.matrices))
-        # nc += top_ten
-        # for i in range(top_ten):
-        #     self.matrices.extend(self.crossover(
-        #         self.matrices[gsv_idx[i]],
-        #         self.matrices[aav_idx[i]]
-        #     ))
+        top_ten = int(0.1 * len(self.matrices))
+        top_idx = np.argsort(self.scores)
+        nc += top_ten
+        top_matrices = [self.matrices[i] for i in top_idx[:top_ten]]
+        for i in range(top_ten):
+            pair = np.random.choice(
+                np.arange(len(top_matrices)), 2, replace=False
+            )
+            self.matrices.extend(self.crossover(
+                top_matrices[pair[0]],
+                top_matrices[pair[1]]
+            ))
 
         while nc < nc_max:
             pair = np.random.choice(
@@ -112,6 +117,9 @@ class GenAlg:
 
         self.aav_scores = [self.aav_scores[i] for i in idx]
         self.aav_scores = self.aav_scores[:self.PS]
+
+        self.scores = [self.scores[i] for i in idx]
+        self.scores = self.scores[:self.PS]
 
     def update_scores(self):
         self.gsv_scores = []
@@ -165,11 +173,10 @@ class GenAlg:
         M = np.array(prefs)
         # log.debug(M.shape)
         # log.debug(M[0, :])
-        self.matrices.append(M)
+        self.matrices = [M]
         for i in range(self.PS - 1):
             self.matrices.append(self.mutate(
                 random.choice(self.matrices)))
-        log.info("Initialized {} matrices".format(len(self.matrices)))
 
         # test: lines should be similar, sometimes mutated
         # line = 2
@@ -190,7 +197,20 @@ class GenAlg:
 
     def run(self):
         tstart = time()
-        self.init_population()
+        log.info("Initializing {} matrices".format(self.PS))
+
+        # find good init population
+        for i in range(30):
+            self.init_population()
+            self.update_scores()
+            init_score = np.min(self.scores)
+            if init_score < self.best_init_score:
+                self.best_init_score = init_score
+                self.best_init_pop = self.matrices.copy()
+            log.info("{:>3} best_init_score: {:.4f}".format(
+                i, self.best_init_score))
+        self.matrices = self.best_init_pop
+
         for i in range(self.NR):
             self.apply_mutations()
             self.apply_crossovers()

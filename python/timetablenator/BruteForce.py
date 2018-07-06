@@ -57,10 +57,13 @@ class BruteForce:
         # pick a participant, look at his wish,
         # drop him into an activity
 
+        try_shuffling = False
+
         for i in range(0, 1000):
             self.init_days()
             # Order of adding participants !!!
-            random.shuffle(self.par)
+            if try_shuffling:
+                random.shuffle(self.par)
             for pa in self.par:
                 filled_days = []
                 for act_id in pa["pref"][:(self.NDAYS)]:
@@ -84,6 +87,8 @@ class BruteForce:
             if pop_score < self.best_pop_score:
                 self.best_pop_score = pop_score
                 self.best_pop = DC(self.days)
+            if not try_shuffling:
+                break
         log.info("Finished running BruteForce in {:.2f}s".format(
             time() - tstart))
         log.info("Winning pop_score: {:.2f}.".format(self.best_pop_score))
